@@ -1,0 +1,84 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: echo "tag=${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}" >> "$GITHUB_OUTPUT"
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+        run: |
+          echo "$CERTIFICATE_P12" | base64 --decode > cert.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import cert.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          rm cert.p12
+
+      - name: Build app
+        run: scripts/build-app.sh -s "Developer ID Application" -o dist
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent dist/PhotoSync.app dist/PhotoSync.zip
+          xcrun notarytool submit dist/PhotoSync.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple dist/PhotoSync.app
+          rm dist/PhotoSync.zip
+          ditto -c -k --keepParent dist/PhotoSync.app dist/PhotoSync.zip
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.tag.outputs.tag }}" dist/PhotoSync.zip --clobber
+
+      - name: Update Homebrew cask
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          SHA=$(shasum -a 256 dist/PhotoSync.zip | awk '{print $1}')
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+          cd /tmp
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/zackwag/homebrew-tap.git"
+          cd homebrew-tap
+          cat > Casks/photosync.rb <<EOF
+          cask "photosync" do
+            version "$VERSION"
+            sha256 "$SHA"
+            url "https://github.com/zackwag/photosync/releases/download/${TAG}/PhotoSync.zip"
+            name "PhotoSync"
+            desc "Sync an iCloud Photo Album to a Skylight frame"
+            homepage "https://github.com/zackwag/photosync"
+            app "PhotoSync.app"
+          end
+          EOF
+          git add Casks/photosync.rb
+          git commit -m "photosync $VERSION"
+          git push
