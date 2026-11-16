@@ -16,18 +16,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 APP_DIR="$OUTPUT_DIR/PhotoSync.app"
 
+BUILD_FLAGS=(-c release --arch arm64 --package-path "$PROJECT_DIR")
+
 echo "Building for arm64..."
-swift build -c release --arch arm64 --package-path "$PROJECT_DIR"
-echo "Building for x86_64..."
-swift build -c release --arch x86_64 --package-path "$PROJECT_DIR"
+swift build "${BUILD_FLAGS[@]}"
+BIN_DIR="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
 
-echo "Creating universal binary..."
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
-
-lipo -create \
-    "$PROJECT_DIR/.build/arm64-apple-macosx/release/PhotoSyncCLI" \
-    "$PROJECT_DIR/.build/x86_64-apple-macosx/release/PhotoSyncCLI" \
-    -output "$APP_DIR/Contents/MacOS/photosync"
+cp "$BIN_DIR/PhotoSyncCLI" "$APP_DIR/Contents/MacOS/photosync"
 
 cp "$PROJECT_DIR/packaging/Info.plist" "$APP_DIR/Contents/Info.plist"
 
