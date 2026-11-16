@@ -18,6 +18,7 @@ struct ConfigCommand: AsyncParsableCommand {
         #endif
 
         // Select album
+        try await reader.requestAccess()
         let albumList = try reader.albums()
         guard !albumList.isEmpty else {
             print("No photo albums found. Create one in Photos first.")

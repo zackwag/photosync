@@ -40,6 +40,7 @@ struct SyncCommand: AsyncParsableCommand {
         fatalError("PhotoSync requires macOS with Photos framework")
         #endif
 
+        try await reader.requestAccess()
         let albumIDs = try reader.albumAssetIDs(albumID: config.albumID)
         let records = try store.listAll()
         let plan = SyncEngine.plan(albumAssetIDs: albumIDs, stateRecords: records, force: force)
