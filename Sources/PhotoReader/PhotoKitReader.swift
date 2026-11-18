@@ -74,11 +74,34 @@ public final class PhotoKitReader: PhotoReading, @unchecked Sendable {
         PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [id], options: nil).firstObject
     }
 
-    private func checkAccess() throws {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        if status == .denied || status == .restricted {
+    public func requestAccess() async throws {
+        var status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if status == .notDetermined {
+            status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        }
+        try Self.validate(status)
+    }
+
+    /// Throws unless `status` is full access. Anything less must stop the
+    /// sync: PhotoKit returns empty or partial results without access, and
+    /// a short read of the album would turn into deletes on the frame.
+    static func validate(_ status: PHAuthorizationStatus) throws {
+        switch status {
+        case .authorized:
+            return
+        case .limited:
+            throw PhotoReaderError.accessLimited
+        case .notDetermined:
+            throw PhotoReaderError.accessNotDetermined
+        case .denied, .restricted:
+            throw PhotoReaderError.accessDenied
+        @unknown default:
             throw PhotoReaderError.accessDenied
         }
+    }
+
+    private func checkAccess() throws {
+        try Self.validate(PHPhotoLibrary.authorizationStatus(for: .readWrite))
     }
 }
 #endif

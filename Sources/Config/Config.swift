@@ -34,10 +34,18 @@ public struct SyncConfig: Codable, Sendable, Equatable {
         pollInterval = try c.decodeIfPresent(Int.self, forKey: .pollInterval) ?? 300
     }
 
-    /// Loads config from a file URL.
+    /// Loads config from a file URL. Throws `ConfigError.notFound` if the
+    /// file doesn't exist, so callers can point at `photosync config`.
     public static func load(from url: URL) throws -> SyncConfig {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw ConfigError.notFound(url.path)
+        }
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(SyncConfig.self, from: data)
+        do {
+            return try JSONDecoder().decode(SyncConfig.self, from: data)
+        } catch {
+            throw ConfigError.invalid(url.path, error.localizedDescription)
+        }
     }
 
     /// Saves config to a file URL, creating the parent directory if needed.
@@ -48,5 +56,18 @@ public struct SyncConfig: Codable, Sendable, Equatable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)
         try data.write(to: url, options: .atomic)
+    }
+}
+
+/// Errors from loading the config file.
+public enum ConfigError: Error, LocalizedError, Equatable {
+    case notFound(String)
+    case invalid(String, String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notFound: "PhotoSync isn't set up yet. Run `photosync config` to pick an album and a frame."
+        case .invalid(let path, let reason): "Couldn't read \(path): \(reason). Run `photosync config` to write a new one."
+        }
     }
 }

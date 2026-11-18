@@ -41,6 +41,17 @@ struct DaemonCommand: AsyncParsableCommand {
 
         print("[\(Self.timestamp())] daemon started, polling every \(config.pollInterval)s")
 
+        // A launchd agent gets its own Photos grant, separate from the
+        // terminal's, so it has to ask under PhotoSync's name. If this
+        // fails, each sync fails with the same error and alerts.
+        print("[\(Self.timestamp())] checking Photos access (answer the prompt from PhotoSync if one appears)")
+        do {
+            try await reader.requestAccess()
+            print("[\(Self.timestamp())] Photos access granted")
+        } catch {
+            print("[\(Self.timestamp())] \(error.localizedDescription)")
+        }
+
         #if canImport(Photos)
         // Register for photo library changes.
         let observer = ChangeObserver(debounceInterval: 2.0) {
@@ -63,7 +74,7 @@ struct DaemonCommand: AsyncParsableCommand {
                 }
             } catch {
                 print("[\(Self.timestamp())] sync error: \(error.localizedDescription)")
-                let isAuth = error is CredentialError
+                let isAuth = error is CredentialError || (error as? PhotoReaderError)?.isAccessError == true
                 let action = tracker.recordFailure(at: Date(), isAuthError: isAuth)
                 if action == .alert {
                     #if canImport(UserNotifications)
