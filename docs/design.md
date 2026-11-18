@@ -136,6 +136,7 @@ If the process dies:
 - **Dry run.** `photosync sync --dry-run` prints the plan and writes nothing.
 - **Mass delete limit.** If a sync would delete more than `max(5, 25%)` of the synced photos, skip and report. `sync --force` overrides. Protects against an album that got wiped or an iCloud sync hiccup that temporarily empties it.
 - **All-or-nothing reads.** A PhotoKit error aborts the sync. An empty album that previously had photos is suspicious and logged as a warning (but allowed, since someone might intentionally clear it).
+- **Full Photos access only.** Without access, PhotoKit returns empty fetch results instead of an error, and with limited access it returns only the photos the user picked. Either would read as photos removed from the album and turn into deletes. So every read checks the authorization status first, and anything other than full access (`.authorized`) stops the sync with an error. `config` and `sync` ask for access if it hasn't been decided yet.
 
 ## Running it
 
@@ -150,7 +151,7 @@ The daemon is a launchd user agent, same pattern as remindersync:
 - `KeepAlive` for restart on crash, no restart on clean exit
 - Aqua session only (TCC prompt needs a GUI session)
 - Logs to `~/Library/Logs/PhotoSync/daemon.log`, same rotation (5 MB, one backup)
-- `photosync install` loads the agent, waits for the Photos permission prompt
+- `photosync install` loads the agent. A run from a terminal is granted Photos access through the terminal app, which doesn't cover the daemon, so the daemon asks for access itself when it starts, and the prompt names PhotoSync. Until it's granted, each sync fails with an access error and alerts straight away. `install` doesn't wait for the answer yet.
 - `photosync uninstall` removes it
 
 The main thread runs a `CFRunLoop` (needed for PhotoKit change notifications, same reason remindersync needs it for EventKit).

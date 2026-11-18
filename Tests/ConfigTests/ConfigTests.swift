@@ -39,4 +39,29 @@ final class ConfigTests: XCTestCase {
         let loaded = try SyncConfig.load(from: tmp)
         XCTAssertEqual(loaded, config)
     }
+
+    func testLoadMissingFile() {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathComponent("config.json")
+        XCTAssertThrowsError(try SyncConfig.load(from: url)) { error in
+            XCTAssertEqual(error as? ConfigError, .notFound(url.path))
+        }
+    }
+
+    func testLoadInvalidFile() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("config.json")
+        try Data("{not json".utf8).write(to: url)
+
+        XCTAssertThrowsError(try SyncConfig.load(from: url)) { error in
+            guard case .invalid(let path, _) = error as? ConfigError else {
+                XCTFail("expected ConfigError.invalid, got \(error)")
+                return
+            }
+            XCTAssertEqual(path, url.path)
+        }
+    }
 }
