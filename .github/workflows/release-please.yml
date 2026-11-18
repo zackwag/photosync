@@ -1,0 +1,31 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    # The template doesn't release itself. If it did, every repo made from
+    # it would start at the template's version and changelog instead of
+    # 0.0.0 and an empty history.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Create / update release PR, or tag + publish a GitHub Release
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          # A personal token, not GITHUB_TOKEN: GitHub doesn't start other
+          # workflows for releases or PRs made with GITHUB_TOKEN, so a
+          # workflow on `release` or a tag push would never run, and the
+          # release PR's required checks would never report.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
