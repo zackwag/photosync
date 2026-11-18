@@ -172,7 +172,7 @@ Same pipeline as remindersync:
 - `PhotoSync.app` bundle, Developer ID signed, notarized.
 - Homebrew cask in `zackwag/homebrew-tap`.
 - release-please for versioning and changelog.
-- GitHub Actions: build universal binary, sign, notarize, upload to release, update cask.
+- GitHub Actions: build arm64 binary, sign, notarize, upload to release, update cask.
 
 ## Build order
 
@@ -201,4 +201,4 @@ The API spike is done (2026-11-16). All three endpoints are confirmed working.
 | Putting this in the remindersync repo | Different language, different Apple framework dependency (Photos vs EventKit), different distribution concern. A monorepo would complicate CI (Swift + Go builds) and blur the scope. |
 | GRDB or SQLite.swift for the state store | One table with two interesting columns. The raw SQLite3 C API ships with macOS and needs no dependency. GRDB is nice but adds a dependency for something this simple. |
 | TOML for config | Swift has no built-in TOML parser. JSON with `Codable` is zero-dependency and built into Foundation. |
-| Xcode project instead of SPM | SPM with `Package.swift` is lighter for a CLI. The build script handles the app bundle, universal binary, signing and notarization outside of Xcode, same as remindersync. |
+| Xcode project instead of SPM | SPM with `Package.swift` is lighter for a CLI. The build script handles the app bundle, signing and notarization outside of Xcode, same as remindersync. |

@@ -10,7 +10,7 @@ It's a Swift CLI (`photosync`) that also runs as a launchd daemon. Releases ship
 
 ## Setup
 
-- macOS 14+ and Xcode command line tools. PhotoKit requires macOS.
+- macOS 26+ on Apple silicon and Xcode command line tools. PhotoKit requires macOS.
 - A Mac with Photos access and a Skylight login. Skylight tokens live in the Keychain (service `photosync`), and `photosync login` creates them.
 - User data lives in `~/Library/Application Support/PhotoSync/` (`config.json` and `state.db`), and the daemon logs to `~/Library/Logs/PhotoSync/daemon.log`.
 

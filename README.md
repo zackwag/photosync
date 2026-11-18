@@ -55,7 +55,7 @@ The daemon polls the photo album and compares it against a local SQLite state da
 
 ## Building from source
 
-Requires macOS 14+ and Xcode command line tools.
+Requires macOS 26+ on Apple silicon and Xcode command line tools.
 
 ```sh
 swift build
