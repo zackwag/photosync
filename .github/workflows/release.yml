@@ -60,7 +60,7 @@ jobs:
 
       - name: Update Homebrew cask
         env:
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           SHA=$(shasum -a 256 dist/PhotoSync.zip | awk '{print $1}')
           TAG="${{ steps.tag.outputs.tag }}"
